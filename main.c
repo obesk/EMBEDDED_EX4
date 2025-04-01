@@ -5,8 +5,11 @@
  * Created on March 17, 2025, 10:06 AM
  */
 
-#include "xc.h"
 #include "timer.h"
+#include "string.h"
+
+#include "xc.h"
+
 
 // 100Hz (the while frequency) / 2.5Hz (the LD2 frequency)
 #define CLOCK_LD_TOGGLE 40 
@@ -43,7 +46,6 @@ void init_buttons() {
     RPINR1bits.INT2R = 0x59; // remapping the interrupt 2 to the T3 button pin
     IFS1bits.INT2IF = 0; // resetting flag of interrupt 2
     
-    INTCON2bits.GIE = 1; // global interrupt enable
     IEC1bits.INT1IE = 1; // enabling interrupt 1
     IEC1bits.INT2IE = 1; // enabling interrupt 2
 }
@@ -59,32 +61,17 @@ void init_uart() {
     U1STAbits.UTXEN = 1; // enable UART transmission
     
     IFS0bits.U1RXIF = 0; // interrupt flag set to 0
-    INTCON2bits.GIE = 1; // global interrupt enable
     IEC0bits.U1RXIE = 1; // enabled interrupt on receive
 }
 
-void print_int_to_uart(int v) {
-    static char rev_str [MAX_INT_LEN];
-    int crs = 0;
-    
-    if (!v) {
-        U1TXREG = '0';
+void print_to_uart(const char * str) {
+    if(!str) {
+        return; 
     }
     
-    if (v < 0) {
-        v = -v;
-        U1TXREG = '-';
-        ++crs;
-    }
-    
-    
-    while (v) {
-        rev_str[crs++] = '0' + (v % 10);
-        v /= 10;
-    }
-    
-    for (int i = crs - 1; i >= 0; --i) {
-        U1TXREG = rev_str[i];
+    for (int i = 0; str[i] != '\0'; ++i) {
+        while(U1STAbits.UTXBF);
+        U1TXREG = str[i];
     }
 }
 
@@ -115,6 +102,10 @@ void match_string(char c) {
 int main(void) {
     init_buttons();
     init_uart();
+    INTCON2bits.GIE = 1; // global interrupt enable
+    
+    char output_buff[10]; //TODO: change size
+
     
     int LD2_toggle_counter = 0;
     
@@ -130,16 +121,16 @@ int main(void) {
         
         if (print_missed_deadlines) {
             print_missed_deadlines = 0;
-            U1TXREG = 'C';
-            U1TXREG = '=';
-            print_int_to_uart(UART_chars_n);
+            
+            sprintf(output_buff, "C=%d", UART_chars_n);
+            print_to_uart(output_buff);
         }
         
         if (print_n_chars) {
             print_n_chars = 0;
-            U1TXREG = 'D';
-            U1TXREG = '=';
-            print_int_to_uart(missed_deadlines);
+            
+            sprintf(output_buff, "D=%d", missed_deadlines);
+            print_to_uart(output_buff);
 
         }
  
