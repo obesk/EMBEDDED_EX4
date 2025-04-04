@@ -7,6 +7,7 @@
 
 #include "timer.h"
 #include "string.h"
+#include "uart.h"
 
 #include "xc.h"
 
@@ -14,7 +15,6 @@
 // 100Hz (the while frequency) / 2.5Hz (the LD2 frequency)
 #define CLOCK_LD_TOGGLE 40 
 #define MAX_INT_LEN 2
-#define BUFF_LEN 10
 
 int ld2_blink = 0;
 int UART_chars_n = 0;
@@ -22,14 +22,6 @@ int missed_deadlines = 0;
 
 int print_n_chars = 0;
 int print_missed_deadlines = 0;
-
-
-struct circular_buffer {
-    char buff[BUFF_LEN];
-    int read;
-    int write;
-    int new_data;
-};
 
 struct circular_buffer input_buff; 
 
@@ -49,32 +41,6 @@ void init_buttons() {
     IEC1bits.INT1IE = 1; // enabling interrupt 1
     IEC1bits.INT2IE = 1; // enabling interrupt 2
 }
-
-void init_uart() {
-    RPINR18bits.U1RXR = 0b1001011; // mapping pin RD11(RPI75) to UART RX
-    RPOR0bits.RP64R = 0b000001; // mapping pin RD0(RP64) to UART TX
-
-    U1BRG = 467; // baud rate to 9600 -> 72 000 000 / (16 * 9600) - 1
-
-    U1STAbits.URXISEL = 0; // set to interrupt on char received
-    U1MODEbits.UARTEN = 1; // enable UART
-    U1STAbits.UTXEN = 1; // enable UART transmission
-    
-    IFS0bits.U1RXIF = 0; // interrupt flag set to 0
-    IEC0bits.U1RXIE = 1; // enabled interrupt on receive
-}
-
-void print_to_uart(const char * str) {
-    if(!str) {
-        return; 
-    }
-    
-    for (int i = 0; str[i] != '\0'; ++i) {
-        while(U1STAbits.UTXBF);
-        U1TXREG = str[i];
-    }
-}
-
 
 void match_string(char c) {
     static int str_crs = 0; 
