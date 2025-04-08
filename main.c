@@ -23,14 +23,11 @@ int missed_deadlines = 0;
 int print_n_chars = 0;
 int print_missed_deadlines = 0;
 
-struct circular_buffer input_buff; 
-
 void algorithm() {
     tmr_wait_ms(TIMER2, 7);
 }
 
 void init_buttons() {
-    TRISA = TRISG = ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     
     RPINR0bits.INT1R = 0x58; // remapping the interrupt 1 to the T2 button pin
     IFS1bits.INT1IF = 0; // resetting flag of interrupt 1
@@ -64,39 +61,42 @@ void match_string(char c) {
     }
 }
 
-
 int main(void) {
     init_buttons();
     init_uart();
-    INTCON2bits.GIE = 1; // global interrupt enable
-    
-    char output_buff[10]; //TODO: change size
 
+    char output_str [50];
+
+    TRISA = TRISG = ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
+
+    INTCON2bits.GIE = 1; // global interrupt enable
     
     int LD2_toggle_counter = 0;
     
     tmr_setup_period(TIMER1, 10);
+
     while(1) {
         algorithm();
         ++LD2_toggle_counter;
         
-        while(input_buff.read != input_buff.write) {
-            match_string(input_buff.buff[input_buff.read]);
-            input_buff.read = (input_buff.read + 1) % BUFF_LEN;
+        
+        while(UART_input_buff.read != UART_input_buff.write) {
+            match_string(UART_input_buff.buff[UART_input_buff.read]);
+            UART_input_buff.read = (UART_input_buff.read + 1) % INPUT_BUFF_LEN;
         }
         
         if (print_missed_deadlines) {
             print_missed_deadlines = 0;
             
-            sprintf(output_buff, "C=%d", UART_chars_n);
-            print_to_uart(output_buff);
+            sprintf(output_str, "C=%d", UART_chars_n);
+            print_to_buff(output_str);
         }
         
         if (print_n_chars) {
             print_n_chars = 0;
             
-            sprintf(output_buff, "D=%d", missed_deadlines);
-            print_to_uart(output_buff);
+            sprintf(output_str, "D=%d", missed_deadlines);
+            print_to_buff(output_str);
 
         }
  
@@ -119,21 +119,35 @@ void __attribute__((__interrupt__)) _U1RXInterrupt(void) {
         const char read_char = U1RXREG;
         U1TXREG = read_char;
 
-        input_buff.buff[input_buff.write] = read_char;
-        input_buff.write = (input_buff.write + 1) % BUFF_LEN;
+        UART_input_buff.buff[UART_input_buff.write] = read_char;
+        UART_input_buff.write = (UART_input_buff.write + 1) % INPUT_BUFF_LEN;
     }
 }
 
-void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(){
+void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void){
     tmr_setup_period(TIMER2, 2);
     IFS1bits.INT1IF = 0;
     print_n_chars = 1;
     tmr_wait_period(TIMER2);
 }
 
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(){
+void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void){
     tmr_setup_period(TIMER2, 2);
     IFS1bits.INT2IF = 0;
     print_missed_deadlines = 1;
     tmr_wait_period(TIMER2);
+}
+
+void __attribute__((__interrupt__)) _U1TXInterrupt(void){
+
+    IFS0bits.U1TXIF = 0; // clear TX interrupt flag
+    ld2_blink = !ld2_blink;
+    if(UART_output_buff.read == UART_output_buff.write){
+        int_ret = 1;
+    }
+
+    while(!U1STAbits.UTXBF && UART_output_buff.read != UART_output_buff.write){
+        U1TXREG = UART_output_buff.buff[UART_output_buff.read];
+        UART_output_buff.read = (UART_output_buff.read + 1) % OUTPUT_BUFF_LEN;
+    }
 }

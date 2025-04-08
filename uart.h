@@ -10,17 +10,30 @@
 
 #include <xc.h>
 
-#define BUFF_LEN 10
+#define INPUT_BUFF_LEN 50   //TODO: SET THE CORRECT SIZE
+#define OUTPUT_BUFF_LEN 50  //TODO: SET THE CORRECT SIZE
 
-struct circular_buffer {
-    char buff[BUFF_LEN];
+extern int int_ret; 
+
+struct input_buffer {
+    char buff[INPUT_BUFF_LEN];
     int read;
     int write;
     int new_data;
 };
 
+extern struct input_buffer UART_input_buff; 
+struct output_buffer {
+    char buff[OUTPUT_BUFF_LEN];
+    int read;
+    int write;
+    int new_data;
+};
+
+extern struct output_buffer UART_output_buff; 
+
 void init_uart();
-void print_to_uart(const char * str);
+void print_to_buff(const char * str);
 
 #endif	/* UART_H */
 
