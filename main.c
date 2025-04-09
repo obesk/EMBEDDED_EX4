@@ -88,14 +88,14 @@ int main(void) {
         if (print_missed_deadlines) {
             print_missed_deadlines = 0;
             
-            sprintf(output_str, "C=%d", UART_chars_n);
+            sprintf(output_str, "D=%d", missed_deadlines);
             print_to_buff(output_str);
         }
         
         if (print_n_chars) {
             print_n_chars = 0;
             
-            sprintf(output_str, "D=%d", missed_deadlines);
+            sprintf(output_str, "C=%d", UART_chars_n);
             print_to_buff(output_str);
 
         }
@@ -125,23 +125,18 @@ void __attribute__((__interrupt__)) _U1RXInterrupt(void) {
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void){
-    tmr_setup_period(TIMER2, 2);
     IFS1bits.INT1IF = 0;
     print_n_chars = 1;
-    tmr_wait_period(TIMER2);
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void){
-    tmr_setup_period(TIMER2, 2);
     IFS1bits.INT2IF = 0;
     print_missed_deadlines = 1;
-    tmr_wait_period(TIMER2);
 }
 
 void __attribute__((__interrupt__)) _U1TXInterrupt(void){
 
     IFS0bits.U1TXIF = 0; // clear TX interrupt flag
-    ld2_blink = !ld2_blink;
     if(UART_output_buff.read == UART_output_buff.write){
         int_ret = 1;
     }
