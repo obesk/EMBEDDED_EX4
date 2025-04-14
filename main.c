@@ -61,9 +61,17 @@ void match_string(char c) {
     }
 }
 
+
 int main(void) {
+    char input_buff[INPUT_BUFF_LEN];
+    char output_buff[OUTPUT_BUFF_LEN];
+ 
+    UART_input_buff.buff = input_buff;
+    UART_output_buff.buff = output_buff;
+
     init_buttons();
     init_uart();
+
 
     char output_str [50];
 
@@ -112,15 +120,16 @@ int main(void) {
 
 void __attribute__((__interrupt__)) _U1RXInterrupt(void) {
     IFS0bits.U1RXIF = 0; //resetting the interrupt flag to 0
-    
-    
+ 
     while(U1STAbits.URXDA) {
         ++UART_chars_n; 
         const char read_char = U1RXREG;
-        U1TXREG = read_char;
 
-        UART_input_buff.buff[UART_input_buff.write] = read_char;
-        UART_input_buff.write = (UART_input_buff.write + 1) % INPUT_BUFF_LEN;
+        const int new_write_index = (UART_input_buff.write + 1) % INPUT_BUFF_LEN;
+        if (new_write_index != UART_input_buff.read) {
+            UART_input_buff.buff[UART_input_buff.write] = read_char;
+            UART_input_buff.write = new_write_index;
+        }
     }
 }
 

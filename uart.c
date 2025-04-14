@@ -1,8 +1,10 @@
 #include "uart.h"
 #include <xc.h>
 
-struct input_buffer UART_input_buff = {0};
-struct output_buffer UART_output_buff = {0};
+
+struct circular_buffer UART_input_buff = {0};
+struct circular_buffer UART_output_buff = {0};
+
 int int_ret = 1; 
 
 void init_uart() {
@@ -30,9 +32,16 @@ void print_to_buff(const char * str) {
     }
     
     for (int i = 0; str[i] != '\0'; ++i) {
+        const int new_write_index = (UART_output_buff.write + 1) % INPUT_BUFF_LEN;
+
+        if(new_write_index == UART_output_buff.read) {
+            break;
+        }
+
         UART_output_buff.buff[UART_output_buff.write] = str[i];
-        UART_output_buff.write = (UART_output_buff.write + 1) % OUTPUT_BUFF_LEN;
+        UART_output_buff.write = new_write_index;
     }
+
     if(int_ret){
         IFS0bits.U1TXIF = 1;
     }
