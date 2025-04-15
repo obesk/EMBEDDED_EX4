@@ -54,6 +54,24 @@ void tmr_setup_period(int timer, int ms) {
 		IFS0bits.T2IF = 0;
 		T2CONbits.TON = 1;
 		break;
+	
+	case TIMER3: // same as the other timer
+		T3CONbits.TON = 0;
+		TMR3 = 0;
+		T3CONbits.TCKPS = p_type;
+		PR3 = clocks;
+		IFS0bits.T3IF = 0;
+		T3CONbits.TON = 1;
+		break;
+	
+	case TIMER4: // same as the other timer
+		T4CONbits.TON = 0;
+		TMR4 = 0;
+		T4CONbits.TCKPS = p_type;
+		PR4 = clocks;
+		IFS1bits.T4IF = 0;
+		T4CONbits.TON = 1;
+		break;
 
 	default:
 		break;
@@ -74,6 +92,7 @@ int tmr_wait_period(int timer) {
 		}
 		IFS0bits.T1IF = 0;
 		break;
+
 	case TIMER2:
 		if (IFS0bits.T2IF == 1) {
 			ret = 1;
@@ -83,6 +102,28 @@ int tmr_wait_period(int timer) {
 			}
 		}
 		IFS0bits.T2IF = 0;
+		break;
+
+	case TIMER3:
+		if (IFS0bits.T3IF == 1) {
+			ret = 1;
+		} else {
+			while (IFS0bits.T3IF == 0) {
+				;
+			}
+		}
+		IFS0bits.T3IF = 0;
+		break;
+
+	case TIMER4:
+		if (IFS1bits.T4IF == 1) {
+			ret = 1;
+		} else {
+			while (IFS1bits.T4IF == 0) {
+				;
+			}
+		}
+		IFS1bits.T4IF = 0;
 		break;
 	}
 

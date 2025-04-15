@@ -39,6 +39,13 @@ void init_buttons() {
     IEC1bits.INT2IE = 1; // enabling interrupt 2
 }
 
+void init_timers() {
+	IEC0bits.T3IE = 1; // enabling the timer 3interrupt
+	IEC1bits.T4IE = 1; // enabling the timer 3interrupt
+    IFS0bits.T3IF = 0;
+    IFS1bits.T4IF = 0;
+}
+
 void match_string(char c) {
     static int str_crs = 0; 
     static const char *LD1 = "LD1";
@@ -71,6 +78,8 @@ int main(void) {
 
     init_buttons();
     init_uart();
+
+    init_timers();
 
 
     char output_str [50];
@@ -112,7 +121,6 @@ int main(void) {
             LD2_toggle_counter = 0;
             LATGbits.LATG9 = !LATGbits.LATG9 && ld2_blink;
         }
-        
         missed_deadlines += tmr_wait_period(TIMER1);
     }
     return 0;
@@ -135,16 +143,31 @@ void __attribute__((__interrupt__)) _U1RXInterrupt(void) {
 
 void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void){
     IFS1bits.INT1IF = 0;
-    print_n_chars = 1;
+
+    tmr_setup_period(TIMER3, 10);
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void){
     IFS1bits.INT2IF = 0;
+
+    tmr_setup_period(TIMER4, 10);
+}
+
+void __attribute__((__interrupt__, no_auto_psv)) _T3Interrupt(void) {
+    IFS0bits.T3IF = 0;
+    T3CONbits.TON = 0;
+
+    print_n_chars = 1;
+}
+
+void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void) {
+    IFS1bits.T4IF = 0;
+    T4CONbits.TON = 0;
+
     print_missed_deadlines = 1;
 }
 
 void __attribute__((__interrupt__)) _U1TXInterrupt(void){
-
     IFS0bits.U1TXIF = 0; // clear TX interrupt flag
     if(UART_output_buff.read == UART_output_buff.write){
         int_ret = 1;
